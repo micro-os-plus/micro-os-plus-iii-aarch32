@@ -55,13 +55,29 @@ namespace semihosting
   // Getting the QEMU case wrong is not fatal to run-qemu.sh (it reads the
   // RESULT line), but it makes QEMU return exit code 1, which a CTest-style
   // runner would report as a failure.
+  //
+  // Each trap is spelled in the instruction set the surrounding code is
+  // compiled for, as the Arm semihosting specification defines it for
+  // AArch32: SVC 0x123456 / HLT #0xF000 in Arm state, SVC 0xAB / HLT #0x3C
+  // in Thumb state. Do not switch with `.arm`: the assembler would encode
+  // the trap as an A32 word inside Thumb code, which the CPU then executes
+  // in Thumb state (the boards build with -marm today, but nothing else
+  // enforces it).
+#if defined(__thumb__)
+#define UOS_SEMIHOST_TRAP_SVC " svc 0xAB\n"         /* Angel, T32 */
+#define UOS_SEMIHOST_TRAP_HLT " .inst.n 0xBABC\n"   /* T32 HLT #0x3C */
+#else
+#define UOS_SEMIHOST_TRAP_SVC " svc 0x123456\n"     /* Angel, A32 */
+#define UOS_SEMIHOST_TRAP_HLT " .inst 0xE10F0070\n" /* A32 HLT #0xF000 */
+#endif
+
 #if defined(QEMU_BUILD)
-#define UOS_SEMIHOST_TRAP ".arm\n svc 0x123456\n"       /* Angel, QEMU */
+#define UOS_SEMIHOST_TRAP UOS_SEMIHOST_TRAP_SVC     /* Angel, QEMU */
 #define UOS_SEMIHOST_EXIT_BY_VALUE 1
 #elif defined(SEMIHOST_TRAP_HLT)
-#define UOS_SEMIHOST_TRAP ".arm\n .inst 0xE10F0070\n"   /* HLT #0xF000 */
+#define UOS_SEMIHOST_TRAP UOS_SEMIHOST_TRAP_HLT     /* HLT */
 #else
-#define UOS_SEMIHOST_TRAP ".arm\n svc 0x123456\n"       /* Angel, ARMv7-A */
+#define UOS_SEMIHOST_TRAP UOS_SEMIHOST_TRAP_SVC     /* Angel, ARMv7-A */
 #endif
 
   // SYS_WRITEC (0x03): write the single char pointed to by r1.
