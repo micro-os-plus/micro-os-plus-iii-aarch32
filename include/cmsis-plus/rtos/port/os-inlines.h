@@ -219,6 +219,12 @@ namespace os
           return true;
         }
 
+        // No hardware stack limit (yet).
+        inline void __attribute__ ((always_inline))
+        set_stack_limit (const void* bottom __attribute__ ((unused)))
+        {
+        }
+
         inline rtos::interrupts::state_t __attribute__ ((always_inline))
         critical_section::enter (void)
         {
